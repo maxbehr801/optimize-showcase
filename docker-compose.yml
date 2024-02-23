@@ -1,0 +1,54 @@
+version: "2"
+services:
+
+  camunda-application:
+    image: maxbehr/camunda-application
+    container_name: camunda-application
+    mem_limit: 512M
+    ports:
+      - 8080:8080
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    ports:
+      - 9200:9200
+    volumes:
+      - ./elasticsearchData:/usr/share/elasticsearch/data
+    environment:
+      - node.name=elasticsearch
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=elastic
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - xpack.license.self_generated.type=basic
+    mem_limit: 1073741824
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  camunda-optimize:
+    image: registry.camunda.cloud/optimize-ee/optimize:3.10.5
+    mem_limit: 512M
+    environment:
+      - OPTIMIZE_CAMUNDABPM_REST_URL=http://camunda-application:8080/engine-rest
+      - OPTIMIZE_ELASTICSEARCH_HOST=elasticsearch
+      - OPTIMIZE_ELASTICSEARCH_HTTP_PORT=9200
+      - OPTIMIZE_ES_SECURITY_USERNAME="elastic"
+      - OPTIMIZE_ES_SECURITY_PASSWORD=elastic
+      - OPTIMIZE_EVENT_BASED_PROCESSES_IMPORT_ENABLED=true
+      - OPTIMIZE_CAMUNDA_BPM_EVENT_IMPORT_ENABLED=true
+      - OPTIMIZE_EVENT_INGESTION_ACCESS_TOKEN=demo
+      - OPTIMIZE_EVENT_BASED_PROCESSES_USER_IDS=[demo]
+    depends_on:
+      - camunda-application
+      - elasticsearch
+    volumes:
+      - ./licenses/license.txt:/optimize/config/OptimizeLicense.txt:ro
+    restart: always
+    ports:
+      - 8090:8090
+      - 8091:8091
